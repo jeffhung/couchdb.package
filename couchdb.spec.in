@@ -1,0 +1,153 @@
+%define rpm_name       #RPM_NAME#
+%define rpm_version    #RPM_VERSION#
+%define rpm_source0    #RPM_SOURCE0#
+%define rpm_source1    #RPM_SOURCE1#
+%define couchdb_user   %{rpm_name}
+%define couchdb_group  %{rpm_name}
+%define couchdb_home   %{_localstatedir}/lib/%{rpm_name}
+
+# See: https://github.com/repoforge/rpms/blob/master/specs/couchdb/couchdb.spec
+# See: https://github.com/wendall911/couchdb-rpm/blob/master/couchdb.spec
+
+Summary:         A document database server, accessible via a RESTful JSON API
+Name:            %{rpm_name}
+Version:         %{rpm_version}
+Release:         0%{?dist}
+License:         Apache
+Group:           Applications/Databases
+URL:             http://couchdb.apache.org/
+#BuildArch:       noarch
+BuildRoot:       %{_tmppath}/%{name}-%{version}-buildroot
+
+Source0:         %{rpm_source0}
+#Source1:         %{name}.init
+Source1:         %{rpm_source1}
+#Source0: https://archive.apache.org/dist/couchdb/source/%{version}/apache-couchdb-%{version}.tar.gz
+#Source0: http://mirror.cloudera.com/apache/couchdb/%{version}/apache-couchdb-%{version}.tar.gz
+#Source1: http://curl.haxx.se/download/curl-%{curl_version}.tar.gz
+
+BuildRequires:   autoconf
+BuildRequires:   automake >= 1.6.3
+BuildRequires:   curl-devel
+BuildRequires:   help2man
+BuildRequires:   libicu-devel >= 3.0
+BuildRequires:   libtool
+BuildRequires:   perl-Test-Harness
+BuildRequires:   autoconf-archive
+BuildRequires:   js-devel >= 1.7
+BuildRequires:   erlang-erts >= R13B
+BuildRequires:   erlang-asn1
+BuildRequires:   erlang-eunit
+BuildRequires:   erlang-os_mon
+BuildRequires:   erlang-xmerl
+BuildRequires:   gcc-c++
+BuildRequires:   make
+
+Requires:        erlang-asn1%{?_isa}
+Requires:        erlang-erts%{?_isa} >= R13B
+Requires:        erlang-os_mon%{?_isa}
+Requires:        erlang-xmerl%{?_isa}
+Requires:        js%{?_isa}
+
+
+%description
+Apache CouchDB is a document-oriented database that can be queried and indexed
+in a MapReduce fashion using JavaScript. CouchDB also offers incremental
+replication with bi-directional conflict detection and resolution.
+
+CouchDB provides a RESTful JSON API than can be accessed from any environment
+that allows HTTP requests. There are myriad third-party client libraries that
+make this even easier from your programming language of choice. CouchDB’s built
+in Web administration console speaks directly to the database using HTTP
+requests issued from your browser.
+
+%prep
+%setup -q -n apache-%{name}-%{version}
+
+%build
+autoreconf -ivf
+%configure --with-erlang=%{_libdir}/erlang/usr/include
+make
+
+%install
+rm -rf %{buildroot}
+make install DESTDIR=%{buildroot}
+
+%if 0%{?fedora} > 16
+# Install /etc/tmpfiles.d entry
+install -D -m 644 %{SOURCE4} %{buildroot}%{_sysconfdir}/tmpfiles.d/%{name}.conf
+%endif
+# Install our custom couchdb initscript
+%if 0%{?fedora} > 16 || 0%{?rhel} >= 7
+# Install systemd entry
+install -D -m 755 %{SOURCE3} %{buildroot}%{_unitdir}/%{name}.service
+rm -rf %{buildroot}/%{_sysconfdir}/rc.d/
+rm -rf %{buildroot}%{_sysconfdir}/default/
+%else
+# Use /etc/sysconfig instead of /etc/default
+mv %{buildroot}%{_sysconfdir}/{default,sysconfig}
+# Use our own init script instead
+rm -f %{buildroot}/%{_sysconfdir}/rc.d/%{name}
+install -D -m 755 %{SOURCE1} %{buildroot}%{_initrddir}/%{name}
+%endif
+
+# Remove generated info files
+rm -f %{buildroot}%{_infodir}/dir
+
+%clean
+rm -rf %{buildroot}
+
+%pre
+getent group  %{couchdb_group} >/dev/null || groupadd -r    %{couchdb_group}
+getent passwd %{couchdb_user}  >/dev/null || useradd  -r -g %{couchdb_group} -d %{couchdb_home} -s /bin/bash \
+                                                      -c "Couchdb Database Server" %{couchdb_user}
+exit 0
+
+
+%files
+%dir %{_sysconfdir}/%{name}
+%dir %{_sysconfdir}/%{name}/local.d
+%dir %{_sysconfdir}/%{name}/default.d
+%config(noreplace) %attr(0644, %{couchdb_user}, %{couchdb_group}) %{_sysconfdir}/%{name}/default.ini
+%config(noreplace) %attr(0644, %{couchdb_user}, %{couchdb_group}) %{_sysconfdir}/%{name}/local.ini
+%config(noreplace) %{_sysconfdir}/logrotate.d/%{name}
+%if 0%{?fedora} > 16
+%{_sysconfdir}/tmpfiles.d/%{name}.conf
+%endif
+%if 0%{?fedora} > 16 || 0%{?rhel} >= 7
+%{_unitdir}/%{name}.service
+%else
+%config(noreplace) %{_sysconfdir}/sysconfig/%{name}
+%{_initrddir}/%{name}
+%endif
+%{_bindir}/%{name}
+%{_bindir}/couch-config
+%{_bindir}/couchjs
+%{_libdir}/%{name}/bin/couchjs
+%{_libdir}/%{name}/erlang/lib/couch-%{version}/
+%{_libdir}/%{name}/erlang/lib/couch_index-0.1/
+%{_libdir}/%{name}/erlang/lib/couch_mrview-0.1/
+%{_libdir}/%{name}/erlang/lib/couch_replicator-0.1/
+%{_libdir}/%{name}/erlang/lib/couch_dbupdates-0.1/
+%{_libdir}/%{name}/erlang/lib/couch_plugins-0.1/
+%{_libdir}/%{name}/erlang/lib/ejson-0.1.0/
+%{_libdir}/%{name}/erlang/lib/etap/
+%{_libdir}/%{name}/erlang/lib/erlang-oauth/
+%{_libdir}/%{name}/erlang/lib/ibrowse-2.2.0/
+%{_libdir}/%{name}/erlang/lib/mochiweb-1.4.1/
+%{_libdir}/%{name}/erlang/lib/snappy-1.0.5/
+%{_datadir}/%{name}
+%{_mandir}/man1/%{name}.1.*
+%{_mandir}/man1/couchjs.1.*
+%{_infodir}/CouchDB.gz
+%{_defaultdocdir}/%{name}
+%dir %attr(0755, %{couchdb_user}, %{couchdb_group}) %{_localstatedir}/log/%{name}
+%dir %attr(0755, %{couchdb_user}, %{couchdb_group}) %{_localstatedir}/run/%{name}
+%dir %attr(0755, %{couchdb_user}, %{couchdb_group}) %{_localstatedir}/lib/%{name}
+
+%changelog
+* Mon Aug 15 2016 Jeff Hung <jeff.cc.hung@gmail.com>
+- Initial implementation
+
+
+

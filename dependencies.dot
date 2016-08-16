@@ -1,0 +1,87 @@
+digraph "couchdb-dependencies" {
+	compound=true;
+	node [ shape=box style=dashed ];
+	edge [ arrowhead=open arrowtail=open style=dashed ];
+
+	"couchdb"              [ style=solid shape=oval ];
+
+	"couchdb"             -> "autoconf-archive";
+	"couchdb"             -> "js-devel";
+	"couchdb"             -> "erlang-erts"
+	"couchdb"             -> "erlang-asn1"
+	"couchdb"             -> "erlang-eunit"
+	"couchdb"             -> "erlang-os_mon"
+	"couchdb"             -> "erlang-xmerl";
+
+	"autoconf-archive" [ style=solid ];
+	"js-devel"         [ style=solid ];
+
+	subgraph cluster_core {
+		label=core
+
+		"erlang-erts";
+		"erlang-kernel";
+		"erlang-stdlib";
+		"erlang-compiler";
+		"erlang-crypto";
+		"erlang-hipe";
+		"erlang-syntax_tools";
+
+		"erlang-erts"           [ style=solid ];
+
+		"erlang-erts"          -> "erlang-kernel" [ dir=both ];
+		"erlang-kernel"        -> "erlang-stdlib" [ dir=both ];
+		"erlang-stdlib"        -> "erlang-erts"   [ dir=both ];
+
+		"erlang-stdlib"        -> "erlang-compiler";
+		"erlang-stdlib"        -> "erlang-crypto";
+		"erlang-compiler"      -> "erlang-hipe";
+		"erlang-hipe"          -> "erlang-syntax_tools";
+		"erlang-syntax_tools"  -> "erlang-erts";
+		"erlang-syntax_tools"  -> "erlang-kernel";
+		"erlang-syntax_tools"  -> "erlang-stdlib";
+	}
+
+	"erlang-asn1"               [ style=solid ];
+	"erlang-asn1"              -> "erlang-syntax_tools";
+	"erlang-asn1"              -> "erlang-erts" [ lhead=cluster_core ];
+
+	"erlang-eunit"              [ style=solid ];
+	"erlang-eunit"             -> "erlang-erts" [ lhead=cluster_core ];
+
+	subgraph cluster_os_mon {
+		"erlang-os_mon"         [ style=solid ];
+//		"erlang-os_mon"        -> "erlang-erts" [ lhead=cluster_core ltail=cluster_os_mon ];
+		"erlang-os_mon"        -> "erlang-mnesia";
+		"erlang-os_mon"        -> "erlang-snmp";
+		"erlang-os_mon"        -> "erlang-sasl";
+		"erlang-os_mon"        -> "erlang-otp_mibs";
+		"erlang-snmp"          -> "erlang-mnesia";
+		"erlang-snmp"          -> "erlang-runtime_tools";
+		"erlang-otp_mibs"      -> "erlang-mnesia";
+		"erlang-otp_mibs"      -> "erlang-snmp";
+		"erlang-sasl"          -> "erlang-tools";
+		"erlang-tools"         -> "erlang-runtime_tools";
+		"erlang-tools"         -> "erlang-webtool";
+		"erlang-tools"         -> "erlang-inets";
+		"erlang-webtool"       -> "erlang-inets";
+		"erlang-webtool"       -> "erlang-observer" [ dir=both ];
+		"erlang-inets"         -> "erlang-mnesia";
+		"erlang-inets"         -> "erlang-runtime_tools";
+		"erlang-inets"         -> "erlang-ssl";
+		"erlang-ssl"           -> "erlang-public_key";
+		"erlang-observer"      -> "erlang-inets";
+		"erlang-observer"      -> "erlang-runtime_tools";
+		"erlang-observer"      -> "erlang-gs";
+		"erlang-observer"      -> "erlang-et";
+		"erlang-et"            -> "erlang-wx";
+		"erlang-et"            -> "erlang-runtime_tools";
+		"erlang-et"            -> "erlang-gs";
+		"erlang-public_key"    -> "erlang-erts" [ lhead=cluster_core ltail=cluster_os_mon ];
+	}
+
+	"erlang-xmerl"              [ style=solid ];
+	"erlang-xmerl"             -> "erlang-erts" [ lhead=cluster_core ];
+
+}
+
